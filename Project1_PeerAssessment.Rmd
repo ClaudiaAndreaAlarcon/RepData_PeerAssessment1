@@ -1,0 +1,166 @@
+---
+title: "Reproducible Research Project 1"
+author: "Claudia Alarcon"
+date: "9 de febrero de 2021"
+output: html_document
+
+---
+
+
+#1. Introduction
+Now it is possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+#2.Data Processing
+##2.1. Data
+The data for this assignment can be downloaded from the given web site: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip
+
+Dataset: Activity monitoring data [52K]
+
+The variables included in this dataset are:
+
+steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+
+date: The date on which the measurement was taken in YYYY-MM-DD format
+
+interval: Identifier for the 5-minute interval in which measurement was taken
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset. #2.2 Loading the Data
+
+##2.1.1. Unzipping the Data
+```{r }
+unzip("activity.zip", unzip= "internal")
+```
+
+###2.1.2.  Reading the dataset
+```{r }
+data <- read.csv("activity.csv", header = TRUE, sep = ",", na.strings = "NA")
+```
+
+###2.1.3. Looking at a summary for the dataset using “summary” and “str” methods
+```{r }
+summary(data)
+str(data)
+```
+###2.1.4. Looking at the first  rows of the dataset
+```{r }
+head(data)
+```
+
+###2.1.5. Converting the “date” variable to a Date classe and the “interval” variable to a factor
+```{r }
+data$date <- as.Date(data$date, format = "%Y-%m-%d")
+data$interval <- factor(data$interval)
+```
+#2.2. Questions
+##2.2.1. What is mean total number of steps taken per day?
+###2.2.1.1. Subsitting the dataset to ignore missing values
+```{r }
+NA_index <- is.na(as.character(data$steps))
+data_no_NA <- data[!NA_index,]
+head(data_no_NA)
+```
+###2.2.1.2.  Aggregating the number of steps taken each day
+```{r }
+#Creating a data frame with the steps taken for each day
+steps_each_day <- aggregate(steps ~ date, data = data_no_NA, sum)
+#Adding column names to the created data frame
+colnames(steps_each_day) <- c("date", "steps")
+```
+
+###2.2.1.3. Making a histogram of the total number of steps taken each day
+```{r }
+hist(as.numeric(steps_each_day$steps), breaks = 20, col = "green", xlab = "Number of Steps", main= "Histogram of the total number of steps taken each day")
+```
+###2.2.1.4. Calculating the mean and median total number of steps taken per day
+```{r }
+#Mean
+mean(steps_each_day$steps)
+#Median
+median(steps_each_day$steps)
+```
+##2.2.2.What is the average daily activity pattern?
+###2.2.2.1. Calculating the average number of steps taken, averaged across all days
+```{r }
+#Calculating the average
+steps_per_interval <- aggregate(data_no_NA$steps, by=list(interval=data_no_NA$interval), FUN=mean)
+
+#Adding columns names
+colnames(steps_per_interval) <- c("interval", "average_steps")
+
+#ploting the average daily activity pattern 
+plot(as.integer(levels(steps_per_interval$interval)), steps_per_interval$average_steps, type="l",
+     xlab = "Interval", ylab = "Average Number of Steps", main = "Average Daily Activity Pattern",  col ="green")
+```
+###2.2.2.2. The 5-minute interval that contains the maximum number of steps
+```{r }
+#The maximum number of average steps
+max_steps <- max(steps_per_interval$average_steps)
+max_steps
+```
+```{r }
+#The 5-minute interval that contains the maximum number of steps
+intervale_max_steps<-steps_per_interval[which.max(steps_per_interval$average_steps),]$interval
+intervale_max_steps
+```
+So, the 5-minute interval that contains the maximum number of steps ( 206.2 steps ) is the interval 835
+
+
+
+##2.3. Imputing missing values
+###2.3.1.The total number of missing values in the dataset (for each variable)
+```{r }
+#For the “steps” variable
+sum(is.na(as.character(data$steps)))
+
+#For the “date” variable
+sum(is.na(as.character(data$date)))
+
+#For the “interval” variable
+sum(is.na(as.character(data$interval)))
+```
+So, the total number of missing values in the dataset is 2304.
+
+###2.3.2.Strategy for filling in all of the missing values in the dataset. Missing values are replaced by the mean of that 5-minute interval
+```{r }
+#finding the indices of missing values (NAs)
+NA_index <- which(is.na(as.character(data$steps)))
+complete_data <- data
+#Imputing missing values using the mean for that 5-minute interval
+complete_data[NA_index, ]$steps<-unlist(lapply(NA_index, FUN=function(NA_index){
+                steps_per_interval[data[NA_index,]$interval==steps_per_interval$interval,]$average_steps
+                }))
+```
+
+###2.3.3. Creating a new dataset that is equal to the original dataset but with the missing data filled in
+```{r }
+#Checking the complete data with the summary and str methods
+summary(complete_data)
+
+str(complete_data)
+```
+
+###2.3.4. Making a histogram of the total number of steps taken each day for the complete dataset
+```{r }
+#Creating a data frame with the steps taken for each day
+steps_each_day_complete <- aggregate(steps ~ date, data = complete_data, sum)
+#Adding column names to the created data frame
+colnames(steps_each_day_complete) <- c("date", "steps")
+
+#Making the histogram
+hist(as.numeric(steps_each_day_complete$steps), breaks = 20, col = "green", xlab = "Number of Steps", main= "Histogram of the total number of steps taken each day")
+```
+
+###2.3.5. Calculating the mean and median total number of steps taken per day for the complete datase
+```{r }
+#Mean
+mean(steps_each_day_complete$steps)
+
+#Median
+median(steps_each_day_complete$steps)
+```
+Notice that the mean of the complete dataset (10766) is equal to the mean of the dataset without missing values. The median of the complete dataset has shifted from 10765 to 10766. Therefore, the mean and median for the complete dataset are almost identical.
+
+
+
